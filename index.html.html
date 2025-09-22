@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SRC Bunda - POS</title>
+  <style>
+    body { margin:0; font-family:'Segoe UI',Arial,sans-serif; background:#fafafa; display:flex; height:100vh; overflow:hidden; }
+    .sidebar { width:220px; background:#fff; color:#d32f2f; padding:20px 15px; display:flex; flex-direction:column; border-right:2px solid #eee; }
+    .logo { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+    .logo img { width:55px; height:55px; object-fit:cover; border-radius:8px; }
+    .logo h3 { font-size:22px; font-weight:800; margin:0; color:#d32f2f; }
+    .logo p { font-size:12px; margin:2px 0 0; color:#555; font-style:italic; }
+
+    .categories { flex:1; overflow-y:auto; margin-top:10px; padding-right:5px; scrollbar-width:thin; }
+    .category { display:flex; align-items:center; gap:10px; padding:10px 12px; margin:6px 0; border-radius:6px; cursor:pointer; font-size:14px; background:#fff; border:1px solid #d32f2f; color:#d32f2f; transition:0.2s; }
+    .category:hover, .category.active { background:#d32f2f; color:#fff; }
+    .category-icon { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; }
+
+    .sidebar-bottom{ margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+    .sidebar-bottom a{ text-decoration:none; padding:10px; border-radius:6px; text-align:center; font-weight:bold; color:#fff; }
+    .btn-location{ background:#f57c00; }
+    .btn-wa{ background:#25d366; }
+
+    .main-wrapper { flex:1; display:flex; flex-direction:column; }
+    .topbar{ padding:20px; background:#fff; display:flex; gap:12px; align-items:center; position:relative; }
+    .topbar h2{ font-size:30px; font-weight:800; margin:0; color:#b71c1c; letter-spacing:0.5px; position:relative; animation: fadeSlide 1.2s ease-out, pulse 3s ease-in-out infinite alternate; }
+    @keyframes fadeSlide { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes pulse { from { transform: scale(1); color:#b71c1c; } to { transform: scale(1.08); color:#d32f2f; } }
+    .search-box{ flex:1; margin-left:20px; display:flex; background:#f5f5f5; border-radius:8px; padding:8px 12px; }
+    .search-box input{ border:none; background:transparent; outline:none; flex:1; font-size:14px; }
+    .cart-icon{ cursor:pointer; font-size:26px; margin-left:15px; color:#d32f2f; user-select:none; }
+
+    .products { flex:1; overflow-y:auto; padding:20px; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); grid-auto-rows: 340px; gap:20px; align-items:stretch; }
+    .product-card { background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); display:flex; flex-direction:column; overflow:hidden; transition:0.3s; height:100%; }
+    .product-card:hover { transform: scale(1.05); box-shadow: 0 8px 20px rgba(211, 47, 47, 0.4); border: 2px solid #d32f2f; }
+    .product-card img { width:100%; height:150px; object-fit:cover; border-bottom:1px solid #eee; }
+    .info { padding:12px; flex:1; display:flex; flex-direction:column; }
+    .info h4 { font-size:15px; margin:0 0 8px 0; font-weight:600; color:#222; }
+    .info p { font-size:13px; margin:0 0 5px 0; color:#555; }
+    .actions { margin-top:auto; display:flex; gap:8px; }
+    .actions button { flex:1; padding:8px; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; }
+    .satuan { background:#d32f2f; color:#fff; }
+    .karton { background:#ff9800; color:#fff; }
+
+    .cart{ position:fixed; top:0; right:-420px; width:380px; height:100%; background:#d32f2f; color:#fff; display:flex; flex-direction:column; transition:0.28s; z-index:1200; }
+    .cart.show{ right:0; }
+    .cart-header{ padding:14px; font-size:16px; font-weight:bold; background:#b71c1c; display:flex; justify-content:space-between; align-items:center; }
+    .cart-items{ flex:1; overflow-y:auto; padding:12px; }
+    .cart-item { background:#fff; color:#000; border-radius:6px; padding:8px; margin-bottom:8px; display:grid; grid-template-columns:1fr 80px 90px; align-items:center; gap:8px; }
+    .cart-item .name{ font-size:13px; font-weight:600; }
+    .cart-item .qty-controls{ display:flex; gap:6px; align-items:center; justify-content:center; }
+    .cart-item .qty-controls button{ background:#eee; border:none; width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:14px; }
+    .cart-item .price{ text-align:right; font-weight:700; font-size:13px; }
+    .cart-footer{ padding:12px; background:#b71c1c; }
+    .cart-footer .total{ display:flex; justify-content:space-between; font-weight:800; margin-bottom:10px; font-size:15px; }
+    .cart-footer button{ width:100%; padding:10px; border:none; background:#fff; color:#b71c1c; border-radius:8px; cursor:pointer; font-size:15px; font-weight:700; }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      <img src="logo.jpg" alt="logo">
+      <div><h3>SRC Bunda</h3><p>Since 2017</p></div>
+    </div>
+    <div class="categories" id="categoryList">
+      <div class="category active" data-cat="all" onclick="filterCategory('all', this)"><div class="category-icon">🍽</div>Semua</div>
+      <div class="category" data-cat="makanan" onclick="filterCategory('makanan', this)"><div class="category-icon">🍜</div>Makanan</div>
+      <div class="category" data-cat="snack" onclick="filterCategory('snack', this)"><div class="category-icon">🍫</div>Snack</div>
+      <div class="category" data-cat="minuman" onclick="filterCategory('minuman', this)"><div class="category-icon">🥤</div>Minuman</div>
+      <div class="category" data-cat="sasetan" onclick="filterCategory('sasetan', this)"><div class="category-icon">☕</div>Sasetan</div>
+      <div class="category" data-cat="sabun" onclick="filterCategory('sabun', this)"><div class="category-icon">🧼</div>Sabun</div>
+      <div class="category" data-cat="shampo" onclick="filterCategory('shampo', this)"><div class="category-icon">🧴</div>Shampo</div>
+      <div class="category" data-cat="sembako" onclick="filterCategory('sembako', this)"><div class="category-icon">🌾</div>Sembako</div>
+      <div class="category" data-cat="bumbu" onclick="filterCategory('bumbu', this)"><div class="category-icon">🥫</div>Bumbu</div>
+      <div class="category" data-cat="kopi" onclick="filterCategory('kopi', this)"><div class="category-icon">☕</div>Kopi</div>
+      <div class="category" data-cat="gula" onclick="filterCategory('gula', this)"><div class="category-icon">🍬</div>Gula</div>
+      <div class="category" data-cat="minyak" onclick="filterCategory('minyak', this)"><div class="category-icon">🛢</div>Minyak</div>
+      <div class="category" data-cat="teh" onclick="filterCategory('teh', this)"><div class="category-icon">🍵</div>Teh</div>
+    </div>
+    <div class="sidebar-bottom">
+      <a href="https://maps.app.goo.gl/2eP95GwNXnqhCCrC7" target="_blank" class="btn-location">📍 Lokasi</a>
+      <a href="https://wa.me/6285263715280" target="_blank" class="btn-wa">💬 WhatsApp</a>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-wrapper">
+    <div class="topbar">
+      <h2>Selamat Datang di SRC Bunda 👋</h2>
+      <div style="flex:1; display:flex; align-items:center;">
+        <div class="search-box"><input type="text" id="searchInput" placeholder="Cari produk..."></div>
+        <div class="cart-icon" onclick="toggleCart()">🛒</div>
+      </div>
+    </div>
+    <div id="productList" class="products"></div>
+  </div>
+
+  <!-- Keranjang -->
+  <div class="cart" id="cartPanel">
+    <div class="cart-header">Keranjang <span style="cursor:pointer;font-size:18px;" onclick="toggleCart()">❌</span></div>
+    <div class="cart-items" id="cartItems"></div>
+    <div class="cart-footer">
+      <div class="total"><span>Total</span><span>Rp <span id="cartTotal">0</span></span></div>
+      <button onclick="checkout()">Checkout via WhatsApp</button>
+    </div>
+  </div>
+
+<script>
+  const products = [
+    {name:"Indomie Kari Ayam", satuan:3500, karton:129000, category:"makanan", image:"k.jpg"},
+    {name:"Indomie Goreng", satuan:3500, karton:115000, category:"makanan", image:"goreng.jpg"},
+    {name:"Indomie Goreng Aceh", satuan:3500, karton:117000, category:"makanan", image:"aceh.jpg"},
+    {name:"Indomie Goreng Rasa Ayam Geprek", satuan:3500, karton:117000, category:"makanan", image:"geprek.jpg"},
+    {name:"Indomie Soto Mie", satuan:3500, karton:115000, category:"makanan", image:"st.jpg"},
+    {name:"Indomie Ayam Bawang", satuan:3500, karton:115000, category:"makanan", image:"bwg.jpg"},
+    {name:"Indomie Mi Goreng Jumbo", satuan:5000, karton:115000, category:"makanan", image:"jp.jpg"},
+    {name:"Mie Sedaap Mi Goreng Original", satuan:3500, karton:107000, category:"makanan", image:"se.jpg"},
+    {name:"Mie Sedaap Mi Goreng Korean Spicy Chicken", satuan:3500, karton:120000, category:"makanan", image:"ss.jpg"},
+    {name:"Mie Sedaap Kari Spesial", satuan:3500, karton:107000, category:"makanan", image:"s2.jpg"},
+    {name:"Mie Sedaap Korean Spicy Soup", satuan:3500, karton:117000, category:"makanan", image:"cn.jpg"},
+    {name:"Mie Sedaap Korean Spicy Chicken", satuan:3500, karton:115000, category:"makanan", image:"sm.jpg"},
+    {name:"Sarimi Isi 2 Soto", satuan:4500, karton:87000, category:"makanan", image:"ss2.jpg"},
+    {name:"Sarimi Isi 2 Baso Sapi", satuan:4500, karton:87000, category:"makanan", image:"bb2.jpg"},
+    {name:"Sarimi Isi 2 Ayam Bawang", satuan:4500, karton:90000, category:"makanan", image:"s3.jpg"},
+    {name:"Sarimi Isi 2 Ayam Kremes", satuan:4500, karton:98000, category:"makanan", image:"k4.jpg"},
+    {name:"Pop Mie Rasa Ayam Bawang", satuan:5500, karton:42000, category:"makanan", image:"s4.jpg"},
+    {name:"Pop Mie Rasa Baso Sapi", satuan:5500, karton:108000, category:"makanan", image:"s5.jpg"},
+    {name:"Pop Mie Rasa Kari Ayam", satuan:5500, karton:108000, category:"makanan", image:"s6.jpg"},
+    {name:"Pop Mie Rasa Pedas Dower", satuan:6000, karton:66000, category:"makanan", image:"s7.jpg"},
+    {name:"Pop Mie Rasa Pedas Gledek", satuan:6000, karton:66000, category:"makanan", image:"s8.jpg"},
+    {name:"Mie Sedaap Cup Soto", satuan:5000, karton:78000, category:"makanan", image:"s9.jpg"},
+    {name:"Mie Sedaap Cup Baso Spesial", satuan:5000, karton:66000, category:"makanan", image:"s10.jpg"},
+    {name:"Mie Sedaap Cup Kari Ayam", satuan:5000, karton:66000, category:"makanan", image:"s11.jpg"},
+    {name:"Mie Sedaap Cup Mi Goreng Original", satuan:5000, karton:68000, category:"makanan", image:"s12.jpg"},
+    {name:"Mie Sedaap Cup Mi Goreng Korean Spicy Chicken", satuan:5000, karton:69999, category:"makanan", image:"s13.jpg"},
+    {name:"Mie Sedaap Cup Rawit Bingit", satuan:5000, karton:69999, category:"makanan", image:"s14.jpg"},
+    {name:"Beng-Beng", satuan:3000, karton:null, category:"snack", image:"s15.jpg"},
+    {name:"Tango Wafer Coklat", satuan:2000, karton:null, category:"snack", image:"s20.jpg"},
+    {name:"Tango Wafer Vanilla", satuan:2000, karton:null, category:"snack", image:"s17.jpg"},
+    {name:"Nabati Wafer Keju", satuan:2000, karton:null, category:"snack", image:"s18.jpg"},
+    {name:"Nabati Wafer Coklat", satuan:2000, karton:null, category:"snack", image:"s19.jpg"},
+    {name:"Roma Kelapa", satuan:10000, karton:null, category:"snack", image:"s21.jpg"},
+    {name:"Roma Malkist Abon", satuan:10000, karton:null, category:"snack", image:"s22.jpg"},
+    {name:"Roma Kelapa Cream Coklat", satuan:10000, karton:null, category:"snack", image:"s23.jpeg"},
+    {name:"Roma Sandwich Coklat", satuan:10000, karton:null, category:"snack", image:"s24.jpeg"},
+    {name:"Roma Sandwich Keju", satuan:10000, karton:null, category:"snack", image:"s25.jpeg"},
+    {name:"Regal Marie", satuan:10000, karton:null, category:"snack", image:"s26.jpeg"},
+    {name:"Oreo Coklat", satuan:10000, karton:null, category:"snack", image:"s27.jpeg"},
+    {name:"Oreo Vanilla", satuan:10000, karton:null, category:"snack", image:"s28.jpeg"},
+    {name:"Oreo Strawberry", satuan:10000, karton:null, category:"snack", image:"s29.jpeg"},
+    {name:"Good Time Choco Chips", satuan:8000, karton:null, category:"snack", image:"s30.jpeg"},
+    {name:"Chitato Rasa Sapi Panggang", satuan:17000, karton:null, category:"snack", image:"s31.png"},
+    {name:"Qtela Singkong Original", satuan:1800, karton:null, category:"snack", image:"s32.jpeg"},
+    {name:"Lays Original", satuan:20000, karton:null, category:"snack", image:"s33.jpeg"},
+    {name:"SilverQueen Chunky Bar", satuan:18000, karton:null, category:"snack", image:"s34.png"},
+    {name:"Cadbury Dairy Milk", satuan:21000, karton:null, category:"snack", image:"s35.webp"},
+    {name:"Aqua", satuan:3000, karton:48000, category:"minuman", image:"s36.jpeg"},
+    {name:"Le Minerale", satuan:3000, karton:47000, category:"minuman", image:"s37.jpeg"},
+    {name:"Teh Pucuk Harum", satuan:4000, karton:67000, category:"minuman", image:"s38.jpeg"},
+    {name:"Sprite", satuan:5000, karton:58000, category:"minuman", image:"s39.jpeg"},
+    {name:"Fanta", satuan:5000, karton:58000, category:"minuman", image:"s40.jpeg"},
+    {name:"Coca Cola", satuan:5000, karton:58000, category:"minuman", image:"s41.jpeg"},
+    {name:"Mizone", satuan:5000, karton:58000, category:"minuman", image:"s42.jpeg"},
+    {name:"Pocari Sweat", satuan:6000, karton:185000, category:"minuman", image:"s43.jpeg"},
+    {name:"Ultra Milk (Cokelat, Strawberry)", satuan:5000, karton:125000, category:"minuman", image:"s44.jpeg"},
+    {name:"Indomilk Kids", satuan:3500, karton:94000, category:"minuman", image:"s45.jpeg"},
+    {name:"Bear Brand", satuan:11000, karton:370000, category:"minuman", image:"s46.jpeg"},
+    {name:"Floridina", satuan:4000, karton:45000, category:"minuman", image:"s47.jpeg"},
+    {name:"Torabika Cappuccino", satuan:2500, karton:22000, category:"sasetan", image:"s48.jpeg"},
+    {name:"Luwak White Coffee", satuan:2500, karton:16000, category:"sasetan", image:"s49.jpeg"},
+    {name:"Susu Dancow", satuan:4500, karton:54000, category:"sasetan", image:"s50.jpeg"},
+    {name:"Chocolatos", satuan:2000, karton:20000, category:"sasetan", image:"s51.jpeg"},
+    {name:"NutriSari", satuan:1500, karton:14000, category:"sasetan", image:"s52.jpeg"},
+    {name:"Good Day", satuan:2000, karton:18000, category:"sasetan", image:"s53.jpeg"},
+    {name:"Max Tea", satuan:2500, karton:22000, category:"sasetan", image:"s54.jpg"},
+    {name:"Kapal Api Special Mix", satuan:2500, karton:22000, category:"sasetan", image:"s54.jpeg"},
+    {name:"Indocafe Coffeemix", satuan:2000, karton:15000, category:"sasetan", image:"s57.jpeg"},
+    {name:"Top Coffee", satuan:2000, karton:20000, category:"sasetan", image:"s58.jpeg"},
+    {name:"Drink Beng Beng", satuan:2000, karton:20000, category:"sasetan", image:"s59.jpeg"},
+    {name:"Lifebuoy", satuan:5000, karton:null, category:"sabun", image:"s60.jpeg"},
+    {name:"Lux", satuan:5000, karton:null, category:"sabun", image:"s61.jpg"},
+    {name:"Dettol", satuan:7000, karton:null, category:"sabun", image:"s62.jpeg"},
+    {name:"Giv", satuan:3500, karton:null, category:"sabun", image:"s63.jpeg"},
+    {name:"Nuvo", satuan:3500, karton:null, category:"sabun", image:"s64.jpeg"},
+    {name:"Shinzui", satuan:5000, karton:null, category:"sabun", image:"s65.jpeg"},
+    {name:"Lervia", satuan:5000, karton:null, category:"sabun", image:"s66.jpeg"},
+    {name:"Citra", satuan:5000, karton:null, category:"sabun", image:"s67.jpeg"},
+    {name:"Johnson’s Baby Soap", satuan:5000, karton:null, category:"sabun", image:"s68.jpeg"},
+    {name:"Sunsilk", satuan:10500, karton:null, category:"shampo", image:"s69.jpeg"},
+    {name:"Clear", satuan:10500, karton:null, category:"shampo", image:"s70.jpeg"},
+    {name:"Pantene", satuan:10500, karton:null, category:"shampo", image:"s71.jpeg"},
+    {name:"Head & Shoulders", satuan:10500, karton:null, category:"shampo", image:"s72.jpeg"},
+    {name:"Lifebuoy Shampoo", satuan:5500, karton:null, category:"shampo", image:"s73.jpeg"},
+    {name:"Rejoice", satuan:10500, karton:null, category:"shampo", image:"s74.jpeg"},
+    {name:"Dove Shampoo", satuan:10500, karton:null, category:"shampo", image:"s75.jpeg"},
+    {name:"Emeron", satuan:5500, karton:null, category:"shampo", image:"s76.jpeg"},
+    {name:"Tresemme", satuan:36000, karton:null, category:"shampo", image:"s78.webp"},
+    {name:"Zinc", satuan:10500, karton:null, category:"shampo", image:"s77.webp"},
+    {name:"Tepung Segitiga Biru 1kg", satuan:13000, karton:null, category:"sembako", image:"s79.webp"},
+    {name:"Tepung Rosebrand", satuan:8000, karton:null, category:"sembako", image:"s80.webp"},
+    {name:"Kecap Bango", satuan:25000, karton:null, category:"bumbu", image:"s81.webp"},
+    {name:"Kecap ABC", satuan:23000, karton:null, category:"bumbu", image:"s82.webp"},
+    {name:"Kecap Sedap", satuan:23000, karton:null, category:"bumbu", image:"s83.webp"},
+    {name:"ABC Sarden Kaleng 155g", satuan:15000, karton:null, category:"bumbu", image:"s84.webp"},
+    {name:"Susu Indomilk Kaleng", satuan:14000, karton:null, category:"bumbu", image:"s85.webp"},
+    {name:"Susu Tiga Sapi Kaleng", satuan:14000, karton:null, category:"bumbu", image:"s86.webp"},
+    {name:"Susu Indomilk Original 260g", satuan:10000, karton:null, category:"bumbu", image:"s87.webp"},
+    {name:"Susu Indomilk Coklat 260g", satuan:10000, karton:null, category:"bumbu", image:"s87.webp"},
+    {name:"Kopi Bubuk ¼ ons", satuan:5000, karton:null, category:"kopi"},
+    {name:"Kopi Bubuk ½ ons", satuan:11000, karton:null, category:"kopi"},
+    {name:"Kopi Bubuk 1 ons", satuan:27000, karton:null, category:"kopi"},
+    {name:"Gula ¼ kg", satuan:5000, karton:null, category:"gula"},
+    {name:"Gula ½ kg", satuan:10000, karton:null, category:"gula"},
+    {name:"Gula 1 kg", satuan:19000, karton:null, category:"gula"},
+    {name:"Minyak Sarimurni 1L", satuan:20000, karton:null, category:"minyak", image:"s89.webp"},
+    {name:"Minyak Sarimurni 2L", satuan:29000, karton:null, category:"minyak", image:"s89.webp"},
+    {name:"Minyak Kuali 1L", satuan:19000, karton:null, category:"minyak", image:"s90.jpeg"},
+    {name:"Minyak Kuali 2L", satuan:38000, karton:null, category:"minyak", image:"s90.jpeg"},
+    {name:"Minyak Kita 1L", satuan:17000, karton:null, category:"minyak", image:"s91.webp"},
+    {name:"Minyak Kita 2L", satuan:33000, karton:null, category:"minyak", image:"s91.webp"},
+    {name:"Teh Sari Murni isi 25", satuan:6500, karton:null, category:"teh", image:"s92.jpeg"},
+    {name:"Teh Sari Wangi isi 25", satuan:6500, karton:null, category:"teh", image:"s93.jpeg"},
+    {name:"Teh Sari Wangi isi 50", satuan:10500, karton:null, category:"teh", image:"s93.jpeg"},
+    {name:"Teh Golpara", satuan:14000, karton:null, category:"teh", image:"s94.jpeg"},
+    {name:"Teh Bendera", satuan:4000, karton:null, category:"teh", image:"s94.jpeg"}
+  ];
+  let cart=[];
+
+  function formatMoney(n){ return n.toLocaleString('id-ID'); }
+
+  function renderProducts(filter="all", search=""){
+    const productList=document.getElementById('productList');
+    productList.innerHTML='';
+    const filtered=products.filter(p=>(filter==="all"||p.category===filter)).filter(p=>p.name.toLowerCase().includes((search||"").toLowerCase()));
+    if(filtered.length===0){ productList.innerHTML='<div style="grid-column:1/-1;padding:20px;background:#fff;border-radius:8px;text-align:center;color:#777">Produk tidak ditemukan.</div>'; return;}
+    filtered.forEach(p=>{
+      const imageFile = p.image ? p.image : "default.jpg";
+      productList.insertAdjacentHTML("beforeend",`
+        <div class="product-card">
+          <img src="${imageFile}" alt="${p.name}">
+          <div class="info">
+            <h4>${p.name}</h4>
+            <p>Satuan: Rp ${formatMoney(p.satuan)}</p>
+            ${p.karton?`<p>Karton: Rp ${formatMoney(p.karton)}</p>`:""}
+            <div class="actions">
+              <button class="satuan" onclick="addToCart('${p.name}','satuan',${p.satuan})">+ Satuan</button>
+              ${p.karton?`<button class="karton" onclick="addToCart('${p.name}','karton',${p.karton})">+ Karton</button>`:""}
+            </div>
+          </div>
+        </div>
+      `);
+    });
+  }
+
+  function filterCategory(cat, el){
+    document.querySelectorAll(".category").forEach(c=>c.classList.remove("active"));
+    if(el) el.classList.add("active");
+    renderProducts(cat, document.getElementById("searchInput").value);
+  }
+
+  function addToCart(name,type,price){let idx=cart.findIndex(i=>i.name===name&&i.type===type);if(idx>=0){cart[idx].qty++;}else{cart.push({name,type,price,qty:1});}updateCart();if(!document.getElementById("cartPanel").classList.contains("show"))toggleCart();}
+  function updateCart(){const cartItems=document.getElementById("cartItems");const cartTotal=document.getElementById("cartTotal");cartItems.innerHTML="";let total=0;cart.forEach((item,i)=>{let subtotal=item.price*item.qty;total+=subtotal;cartItems.insertAdjacentHTML("beforeend",`<div class="cart-item"><div class="name">${item.name} <small>(${item.type})</small></div><div class="qty-controls"><button onclick="changeQty(${i},-1)">-</button><span>${item.qty}</span><button onclick="changeQty(${i},1)">+</button></div><div class="price">Rp ${formatMoney(subtotal)}</div></div>`);});cartTotal.textContent=formatMoney(total);}
+  function changeQty(i,d){cart[i].qty+=d;if(cart[i].qty<=0)cart.splice(i,1);updateCart();}
+  function toggleCart(){document.getElementById("cartPanel").classList.toggle("show");}
+  function checkout(){if(cart.length===0){alert("Keranjang kosong!");return;}let pesan="Halo, saya ingin pesan:%0A%0A";let total=0;cart.forEach(it=>{pesan+=`${it.qty}x ${it.name} (${it.type}) = Rp ${formatMoney(it.price*it.qty)}%0A`;total+=it.price*it.qty;});pesan+=`%0ATotal: Rp ${formatMoney(total)}`;window.open(`https://wa.me/6285263715280?text=${pesan}`,"_blank");}
+  document.addEventListener("DOMContentLoaded",()=>{const initial=document.querySelector(".category.active");renderProducts(initial?initial.dataset.cat:"all","");document.getElementById("searchInput").addEventListener("input",e=>{const active=document.querySelector(".category.active");renderProducts(active?active.dataset.cat:"all",e.target.value);});});
+</script>
+</body>
+</html>
